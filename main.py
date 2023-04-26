@@ -15,7 +15,9 @@ import base64
 
 # --------------------------------- Global Variables ---------------------------------
 
-CacheFilename ='output.png'
+CacheFilename = 'output.png'
+Filename = 'Image'
+SerialNumber = random.randint(0, 999999)
 
 SourceImage = ''
 SourceFile =''
@@ -27,6 +29,11 @@ SettingPrePrompt = ''
 SettingPostPrompt = ''
 
 SettingsPreNegPrompt = ''
+
+SettingFinetunePrompt = ''
+SettingFinetuneNegativePrompt = ''
+
+SettingCurrentFilename = ''
 
 SettingCFG = 7
 
@@ -57,6 +64,15 @@ FormatRefined = "iVBORw0KGgoAAAANSUhEUgAAALUAAAD/CAYAAAC3kJejAAAACXBIWXMAAAsTAAA
 
 # --------------------------------- Functions ---------------------------------
 
+def SerialSave(result):
+
+    global SerialNumber
+    global Filename
+    
+    result.save(Filename + str(SerialNumber) + ".png")
+    print ("Saved " + Filename + str(SerialNumber) + ".png")
+    SerialNumber += 1
+
 def UpdateRenderSettings():
     
     global DestinationFormat
@@ -64,6 +80,11 @@ def UpdateRenderSettings():
     global SettingPostPrompt
     global SettingsPreNegPrompt
     global SettingCFG
+    global SettingFinetunePrompt
+    global SettingFinetuneNegativePrompt
+    
+    SettingFinetunePrompt = ''
+    SettingFinetuneNegativePrompt = ''
     
     if DestinationFormat == 'Reference':
         SettingPrePrompt = ''
@@ -75,11 +96,11 @@ def UpdateRenderSettings():
         SettingPrePrompt = 'Highly detailed spontaneous beautiful concept sketch of a '
         SettingPostPrompt = ' sketched in black and white, loose pencil sketch, sketchy, concept art, cinematic, (((white space))), high-quality sketching, cinematic'
         SettingsPreNegPrompt = 'pen, pencil, brush, signature, ballpoint, marker, sketchbook, notebook, notepad, frame, framed, ring binder, paper, drawing pad, reflection, ugly, tiling, poorly drawn hands, poorly drawn, poorly drawn face, out of frame, extra limbs, disfigured, deformed, body out of frame, blurry, bad anatomy, blurred, watermark, grainy, cut off, duplicate, copy, multi, two faces, kitsch, oversaturated, low-res, mutation, mutated, extra limb, missing limb, floating limbs, disconnected limbs, malformed hands, blur, out of focus, long neck, long body, childish, mutilated, mangled, old, bad quality'
-        SettingCFG = 7
+        SettingCFG = 10
 
     if DestinationFormat == 'Thumbnail':
-        SettingPrePrompt = 'Highly detailed graphic thumbnail of '
-        SettingPostPrompt = ', cinematic composition, digital painting, hyperrealistic, realistic, photorealistic, dynamic lighting, cinematic landscape, studio landscape, studio lighting, black and white'    
+        SettingPrePrompt = 'Detailed zenithal view graphic thumbnail of '
+        SettingPostPrompt = ', cinematic composition, digital painting, dynamic lighting, cinematic landscape, studio landscape, studio lighting, muted colors, vanishing point'
         SettingsPreNegPrompt = ''
         SettingCFG = 7
         
@@ -87,11 +108,11 @@ def UpdateRenderSettings():
         SettingPrePrompt = 'Highly detailed character sheet of '
         SettingPostPrompt = ', fine details, concept art, contrast, full body, (((turnaround))), (((front view))), (((back view))), ultra wide angle, sketched in vibrant  color, loose pencil sketch, sketchy, concept art, cinematic, (((white space))), high-quality sketching, cinematic'   
         SettingsPreNegPrompt = ''
-        SettingCFG = 7
+        SettingCFG = 10
         
     if DestinationFormat == 'Refined':
-        SettingPrePrompt = 'Ultra realistic illustration, '
-        SettingPostPrompt = ', highly detailed, digital painting, concept art, smooth, sharp focus, illustration'
+        SettingPrePrompt = 'Ultra-realistic full-color illustration of '
+        SettingPostPrompt = ', highly detailed, digital painting, concept art, smooth, sharp focus, illustration, colorful, beautiful'
         SettingsPreNegPrompt = ''
         SettingCFG = 7
         
@@ -124,7 +145,7 @@ def convert_to_bytes(file_or_bytes, resize=None):
     if resize:
         new_width, new_height = resize
         scale = min(new_height/cur_height, new_width/cur_width)
-        img = img.resize((int(cur_width*scale), int(cur_height*scale)), PIL.Image.ANTIALIAS)
+        img = img.resize((int(cur_width*scale), int(cur_height*scale)), PIL.Image.LANCZOS)
     bio = io.BytesIO()
     img.save(bio, format="PNG")
     del img
@@ -136,9 +157,10 @@ def Txt2Img(PositivePrompt, NegativePrompt, Steps=20, Seed=0, CFG=8, Sampler='DP
     global SettingPostPrompt
     global SettingsPreNegPrompt
     global SettingCFG
+    global CacheFilename
 
-    print (NegativePrompt)
-    print (SettingsPreNegPrompt)
+    #print (NegativePrompt)
+    #print (SettingsPreNegPrompt)
 
     PositivePrompt = clean_up_prompt(PositivePrompt)
     NegativePrompt = clean_up_prompt(NegativePrompt)
@@ -150,7 +172,13 @@ def Txt2Img(PositivePrompt, NegativePrompt, Steps=20, Seed=0, CFG=8, Sampler='DP
     else:
         NegativePrompt = SettingsPreNegPrompt
     
-    print (NegativePrompt)
+    if SettingFinetunePrompt:
+        PositivePrompt = SettingFinetunePrompt
+        
+    if SettingFinetuneNegativePrompt:
+        NegativePrompt = SettingFinetuneNegativePrompt
+
+    #print (NegativePrompt)
     
     Seed = random.randint(11111, 99999)
     
@@ -176,14 +204,13 @@ def Txt2Img(PositivePrompt, NegativePrompt, Steps=20, Seed=0, CFG=8, Sampler='DP
 
     Txt2ImgResult.images
     result = Txt2ImgResult.image
-    filename ='output.png'
-    result.save(filename)
+    result.save(CacheFilename)
     
     #print (PositivePrompt)
     #print (NegativePrompt)
     #print('Generated: {}'.format(query), flush=True)
-    infotext = result.info
-    print('{}'.format(infotext), flush=True)
+    #infotext = result.info
+    #print('{}'.format(infotext), flush=True)
         
     return result
 
@@ -194,6 +221,7 @@ def Img2Img(SourcedImage, PositivePrompt, NegativePrompt, Steps=20, Seed=0, CFG=
     global SettingsPreNegPrompt
     global SettingCFG
     global SourceImage
+    global CacheFilename
     
     PositivePrompt = clean_up_prompt(PositivePrompt)
     NegativePrompt = clean_up_prompt(NegativePrompt)
@@ -204,6 +232,12 @@ def Img2Img(SourcedImage, PositivePrompt, NegativePrompt, Steps=20, Seed=0, CFG=
         NegativePrompt = f"{SettingsPreNegPrompt}, {NegativePrompt}"
     else:
         NegativePrompt = SettingsPreNegPrompt
+        
+    if SettingFinetunePrompt:
+        PositivePrompt = SettingFinetunePrompt
+        
+    if SettingFinetuneNegativePrompt:
+        NegativePrompt = SettingFinetuneNegativePrompt
     
     Seed = random.randint(11111, 99999)
     
@@ -232,12 +266,11 @@ def Img2Img(SourcedImage, PositivePrompt, NegativePrompt, Steps=20, Seed=0, CFG=
 
     Img2ImgResult.images
     result = Img2ImgResult.image
-    filename ='output.png'
-    result.save(filename)
+    result.save(CacheFilename)
     
     #print('Generated: {}'.format(query), flush=True)
-    infotext = result.info
-    print('{}'.format(infotext), flush=True)
+    #infotext = result.info
+    #print('{}'.format(infotext), flush=True)
         
     return result
 
@@ -262,10 +295,10 @@ NewTheme = {'BACKGROUND': '#1E1E1E',
                 'PROGRESS_DEPTH': 0}
 
 # Add your dictionary to the PySimpleGUI themes
-sg.theme_add_new('NewTheme', NewTheme)
+sg.theme_add_new('ConceptFlow', NewTheme)
 
 # Switch your theme to use the newly added one. You can add spaces to make it more readable
-sg.theme('NewTheme')
+sg.theme('ConceptFlow')
 
 sg.theme_button_color((sg.theme_background_color(), sg.theme_background_color()))
 sg.theme_border_width(0)
@@ -280,9 +313,9 @@ def make_win1():
            [sg.Push(), sg.Button('', key='StartFormat', image_data=DecorationSource, button_color=(sg.theme_background_color(), sg.theme_background_color()), border_width=0, pad=(20,20)), sg.Image(data=DecorationArrow), sg.Button('', key='EndFormat', image_data=DecorationDestination, button_color=(sg.theme_background_color(), sg.theme_background_color()), border_width=0, pad=(20,20)), sg.Push()],
            [sg.Push(), sg.Text('Source Image', key='LabelSourceImage', visible = True, pad=((20,20),(20,0))), sg.Push(), sg.Input(key='SelectFile', visible=False, enable_events = True), sg.Button(button_text='', key='ChooseFile', target=(sg.ThisRow, -1), file_types=sg.FILE_TYPES_ALL_FILES, button_type=sg.BUTTON_TYPE_BROWSE_FILE, image_data=DecorationPicker, button_color=(sg.theme_background_color(), sg.theme_background_color()), border_width=0, pad=(20,0)), sg.Push()],
            [sg.Text('Create this', key='LabelPrompt', pad=((20,20),(40,10)))],
-           [sg.Multiline(key='Prompt', pad=(20,0), expand_x=True, no_scrollbar=True, focus=True, size=(40,3))],
+           [sg.Multiline(key='Prompt', text_color=('white'), pad=(20,0), expand_x=True, no_scrollbar=True, focus=True, size=(40,3))],
            [sg.Text('Avoid this', key='LabelNegativePrompt', pad=((20,20),(20,10)))],
-           [sg.Multiline(key='NegativePrompt', pad=(20,0), expand_x=True, no_scrollbar=True, size=(40,3))],
+           [sg.Multiline(key='NegativePrompt', text_color=('white'), pad=(20,0), expand_x=True, no_scrollbar=True, size=(40,3))],
            [sg.Button('', key='Finetune', image_data=DecorationFinetune, button_color=(sg.theme_background_color(), sg.theme_background_color()), border_width=0, pad=(20,20)), sg.Push(), sg.Button('', key='Generate', image_data = DecorationGenerate, bind_return_key=True, button_color=(sg.theme_background_color(), sg.theme_background_color()), border_width=0, pad=(20,20))],
            ]
 
@@ -298,11 +331,11 @@ def make_win1():
 
     variants_col = [
                [sg.Image(key='Variant1',background_color='#4A4A4A', size = (200, 200), pad=((20,20),(20,0)))],
-               [sg.Push(), sg.Button('', key='Regenerate1', image_data=DecorationRegenerate, button_color=(sg.theme_background_color(), sg.theme_background_color()), border_width=0, pad=(5,5)), sg.Button('', key='Save1', image_data=DecorationSave, button_color=(sg.theme_background_color(), sg.theme_background_color()), border_width=0, pad=((5,20),(5,10)))],
+               [sg.Push(), sg.Button('', key='Regenerate1', image_data=DecorationRegenerate, button_color=(sg.theme_background_color(), sg.theme_background_color()), border_width=0, pad=(20,10))],
                [sg.Image(key='Variant2',background_color='#4A4A4A', size = (200, 200), pad=((20,20),(20,0)))],
-               [sg.Push(), sg.Button('', key='Regenerate2', image_data=DecorationRegenerate, button_color=(sg.theme_background_color(), sg.theme_background_color()), border_width=0, pad=(5,5)), sg.Button('', key='Save3', image_data=DecorationSave, button_color=(sg.theme_background_color(), sg.theme_background_color()), border_width=0, pad=((5,20),(5,10)))],
+               [sg.Push(), sg.Button('', key='Regenerate2', image_data=DecorationRegenerate, button_color=(sg.theme_background_color(), sg.theme_background_color()), border_width=0, pad=(20,10))],
                [sg.Image(key='Variant3',background_color='#4A4A4A', size = (200, 200), pad=((20,20),(20,0)))],
-               [sg.Push(), sg.Button('', key='Regenerate3', image_data=DecorationRegenerate, button_color=(sg.theme_background_color(), sg.theme_background_color()), border_width=0, pad=(5,5)), sg.Button('', key='Save3', image_data=DecorationSave, button_color=(sg.theme_background_color(), sg.theme_background_color()), border_width=0, pad=((5,20),(5,10)))]
+               [sg.Push(), sg.Button('', key='Regenerate3', image_data=DecorationRegenerate, button_color=(sg.theme_background_color(), sg.theme_background_color()), border_width=0, pad=(20,10))]
                ]
     
     layout = [
@@ -339,6 +372,30 @@ def make_win3():
            ]]
     return sg.Window('Destination Format', windowendformatlayout, modal=True, finalize=True, icon="logo.ico")
 
+def make_win4(PositivePrompt, NegativePrompt):
+
+    global SettingPrePrompt
+    global SettingPostPrompt
+    global SettingsPreNegPrompt
+    
+    FullPrompt = SettingPrePrompt + PositivePrompt + SettingPostPrompt
+    FullNegativePrompt = SettingsPreNegPrompt + ", " + NegativePrompt
+    
+    FullPrompt = clean_up_prompt(FullPrompt)
+    FullNegativePrompt = clean_up_prompt(FullNegativePrompt)
+    
+    print (FullPrompt)
+    print (FullNegativePrompt)
+
+    windowendformatlayout = [[sg.Push(), sg.Text('Fine-tune your prompts'), sg.Push()],
+           [sg.Text('Full prompt', key='FinetuneLabelPrompt', pad=((20,20),(40,10)))],
+           [sg.Multiline(default_text=FullPrompt, key='FinetunePrompt', text_color=('white'), pad=(20,0), expand_x=True, no_scrollbar=True, focus=True, size=(80,10))],
+           [sg.Text('Full negative prompt', key='FinetuneLabelNegativePrompt', pad=((20,20),(20,10)))],
+           [sg.Multiline(default_text=FullNegativePrompt, key='FinetuneNegativePrompt', text_color=('white'), pad=(20,0), expand_x=True, no_scrollbar=True, size=(80,10))],
+           [sg.Push(), sg.Button('', key='FinetuneOK', image_data=DecorationFinetune, button_color=(sg.theme_background_color(), sg.theme_background_color()), border_width=0, pad=(20,20))],
+           ]
+    return sg.Window('Fine-tune', windowendformatlayout, modal=True, finalize=True, icon="logo.ico")
+
 # --------------------------------- Main Event Loop ---------------------------------
 
 def main():
@@ -346,6 +403,8 @@ def main():
     global SourceImage
     global SourceFormat
     global DestinationFormat
+    
+    global SettingCurrentFilename
 
     window1, window2, window3 = make_win1(), None, None        # start off with 1 window open
 
@@ -372,13 +431,12 @@ def main():
             window['ChooseFile'].update(image_data=convert_to_bytes(value['SelectFile'], resize=new_size))
             window['LabelSourceImage'].update(visible=True)
             SourceImage = image_data=convert_to_bytes(value['SelectFile'])
+            SettingCurrentFilename = value['SelectFile']
             
             if SourceFormat == '':
                 window3 = make_win3()
         
         elif event == 'Generate':
-        
-            UpdateRenderSettings()
         
             window['-IMAGE-'].update(data=DecorationGeneratingImage)
             window['Variant1'].update(data=DecorationGeneratingImageSmall)
@@ -391,49 +449,55 @@ def main():
                 GeneratedImage = Txt2Img(value['Prompt'], value['NegativePrompt'])
                 new_size = None
                 window['-IMAGE-'].update(data=convert_to_bytes(CacheFilename, resize=new_size))
+                SerialSave(GeneratedImage)
                 window.refresh()
                 
                 GeneratedImage = Txt2Img(value['Prompt'], value['NegativePrompt'])
                 new_size = (200, 200)
                 window['Variant1'].update(data=convert_to_bytes(CacheFilename, resize=new_size))
+                SerialSave(GeneratedImage)
                 window.refresh()
                 
                 GeneratedImage = Txt2Img(value['Prompt'], value['NegativePrompt'])
                 new_size = (200, 200)
                 window['Variant2'].update(data=convert_to_bytes(CacheFilename, resize=new_size))
+                SerialSave(GeneratedImage)
                 window.refresh()
                 
                 GeneratedImage = Txt2Img(value['Prompt'], value['NegativePrompt'])
                 new_size = (200, 200)
                 window['Variant3'].update(data=convert_to_bytes(CacheFilename, resize=new_size))
+                SerialSave(GeneratedImage)
             
             else:
 
                 GeneratedImage = Img2Img(value['SelectFile'], value['Prompt'], value['NegativePrompt'])
                 new_size = None
                 window['-IMAGE-'].update(data=convert_to_bytes(CacheFilename, resize=new_size))
+                SerialSave(GeneratedImage)
                 window.refresh()
                 
                 GeneratedImage = Img2Img(value['SelectFile'], value['Prompt'], value['NegativePrompt'])
                 new_size = (200, 200)
                 window['Variant1'].update(data=convert_to_bytes(CacheFilename, resize=new_size))
+                SerialSave(GeneratedImage)
                 window.refresh()
                 
                 GeneratedImage = Img2Img(value['SelectFile'], value['Prompt'], value['NegativePrompt'])
                 new_size = (200, 200)
                 window['Variant2'].update(data=convert_to_bytes(CacheFilename, resize=new_size))
+                SerialSave(GeneratedImage)
                 window.refresh()
                 
                 GeneratedImage = Img2Img(value['SelectFile'], value['Prompt'], value['NegativePrompt'])
                 new_size = (200, 200)
                 window['Variant3'].update(data=convert_to_bytes(CacheFilename, resize=new_size))            
+                SerialSave(GeneratedImage)
                 
             
-        #Regenerate result
+        # Regenerate result
         
         elif event == 'Regenerate0':
-                
-            UpdateRenderSettings()
                 
             window['-IMAGE-'].update(data=DecorationGeneratingImage)
             window.refresh()
@@ -454,7 +518,6 @@ def main():
 
         elif event == 'Regenerate1':
                 
-            UpdateRenderSettings()
                 
             window['Variant1'].update(data=DecorationGeneratingImageSmall)
             window.refresh()
@@ -475,7 +538,6 @@ def main():
 
         elif event == 'Regenerate2':
                 
-            UpdateRenderSettings()
                 
             window['Variant2'].update(data=DecorationGeneratingImageSmall)
             window.refresh()
@@ -496,8 +558,6 @@ def main():
 
         elif event == 'Regenerate3':
                 
-            UpdateRenderSettings()
-                
             window['Variant3'].update(data=DecorationGeneratingImageSmall)
             window.refresh()
             
@@ -516,37 +576,42 @@ def main():
                 window.refresh()           
             
             
-        #User selects destination format
+        # User selects destination format
 
         elif event == 'EndFormatReference':
             DestinationFormat = "Reference"
             window2 = None
             window.close()
             window1['EndFormat'].update(image_data=FormatReference)
+            UpdateRenderSettings()
 
         elif event == 'EndFormatSketch':
             DestinationFormat = "Sketch"
             window2 = None
             window.close()
             window1['EndFormat'].update(image_data=FormatSketch)
+            UpdateRenderSettings()
             
         elif event == 'EndFormatThumbnail':
             DestinationFormat = "Thumbnail"
             window2 = None
             window.close()
             window1['EndFormat'].update(image_data=FormatThumbnail)
+            UpdateRenderSettings()
         
         elif event == 'EndFormatTurnaround':
             DestinationFormat = "Turnaround"
             window2 = None
             window.close()
             window1['EndFormat'].update(image_data=FormatTurnaround)
+            UpdateRenderSettings()
         
         elif event == 'EndFormatRefined':
             DestinationFormat = "Refined"
             window2 = None
             window.close()
             window1['EndFormat'].update(image_data=FormatRefined)
+            UpdateRenderSettings()
             
         #User selects source format
         
@@ -555,12 +620,9 @@ def main():
             window3 = None
             window.close()
             window1['StartFormat'].update(image_data=FormatText)
-            window1['ChooseFile'].update(visible=False)
             window1['LabelSourceImage'].update(visible=False)
-#            window1['LabelPrompt'].update(visible=True)
-#            window1['Prompt'].update(visible=True)           
-#            window1['LabelNegativePrompt'].update(visible=True)
-#            window1['NegativePrompt'].update(visible=True)           
+            window1['ChooseFile'].update(visible=False)
+            UpdateRenderSettings()
             window.refresh()
 
         elif event == 'SourceFormatReference':
@@ -568,22 +630,27 @@ def main():
             window3 = None
             window.close()
             window1['StartFormat'].update(image_data=FormatReference)        
+            window1['LabelSourceImage'].update(visible=True)
             window1['ChooseFile'].update(visible=True)
             window.refresh()
+            UpdateRenderSettings()
             
         elif event == 'SourceFormatSketch':
             SourceFormat = "Sketch"
             window3 = None
             window.close()
             window1['StartFormat'].update(image_data=FormatSketch)
+            window1['LabelSourceImage'].update(visible=True)
             window1['ChooseFile'].update(visible=True)
             window.refresh()
+            UpdateRenderSettings()
             
         elif event == 'SourceFormatThumbnail':
             SourceFormat = "Thumbnail"
             window3 = None
             window.close()
             window1['StartFormat'].update(image_data=FormatThumbnail)
+            window1['LabelSourceImage'].update(visible=True)
             window1['ChooseFile'].update(visible=True)
             window.refresh()
 
@@ -592,16 +659,89 @@ def main():
             window3 = None
             window.close()
             window1['StartFormat'].update(image_data=FormatTurnaround)
+            window1['LabelSourceImage'].update(visible=True)
             window1['ChooseFile'].update(visible=True)
             window.refresh()
+            UpdateRenderSettings()
 
         elif event == 'SourceFormatRefined':
             SourceFormat = "Refined"
             window3 = None
             window.close()
             window1['StartFormat'].update(image_data=FormatRefined)
+            window1['LabelSourceImage'].update(visible=True)
             window1['ChooseFile'].update(visible=True)
             window.refresh()
+            UpdateRenderSettings()
+        
+        # Fine-tuning settings and generation
+        
+        elif event == "Finetune" and DestinationFormat:
+            UpdateRenderSettings()
+            window3 = make_win4(value['Prompt'], value['NegativePrompt'])
+            
+        elif event == "FinetuneOK":
+            SettingFinetunePrompt = value['FinetunePrompt']
+            SettingFinetuneNegativePrompt = value['FinetuneNegativePrompt']
+            print (SettingFinetunePrompt)
+            print (SettingFinetuneNegativePrompt)
+            window4 = None
+            window.close()
+            window1['-IMAGE-'].update(data=DecorationGeneratingImage)
+            window1['Variant1'].update(data=DecorationGeneratingImageSmall)
+            window1['Variant2'].update(data=DecorationGeneratingImageSmall)
+            window1['Variant3'].update(data=DecorationGeneratingImageSmall)
+            window1.refresh()
+
+            if SourceImage == '':                
+            
+                GeneratedImage = Txt2Img(SettingFinetunePrompt, SettingFinetuneNegativePrompt)
+                new_size = None
+                window1['-IMAGE-'].update(data=convert_to_bytes(CacheFilename, resize=new_size))
+                SerialSave(GeneratedImage)
+                window1.refresh()
+                
+                GeneratedImage = Txt2Img(SettingFinetunePrompt, SettingFinetuneNegativePrompt)
+                new_size = (200, 200)
+                window1['Variant1'].update(data=convert_to_bytes(CacheFilename, resize=new_size))
+                SerialSave(GeneratedImage)
+                window1.refresh()
+                
+                GeneratedImage = Txt2Img(SettingFinetunePrompt, SettingFinetuneNegativePrompt)
+                new_size = (200, 200)
+                window1['Variant2'].update(data=convert_to_bytes(CacheFilename, resize=new_size))
+                SerialSave(GeneratedImage)
+                window1.refresh()
+                
+                GeneratedImage = Txt2Img(SettingFinetunePrompt, SettingFinetuneNegativePrompt)
+                new_size = (200, 200)
+                window1['Variant3'].update(data=convert_to_bytes(CacheFilename, resize=new_size))
+                SerialSave(GeneratedImage)
+            
+            else:
+
+                GeneratedImage = Img2Img(SettingCurrentFilename, SettingFinetunePrompt, SettingFinetuneNegativePrompt)
+                new_size = None
+                window1['-IMAGE-'].update(data=convert_to_bytes(CacheFilename, resize=new_size))
+                SerialSave(GeneratedImage)
+                window1.refresh()
+                
+                GeneratedImage = Img2Img(SettingCurrentFilename, SettingFinetunePrompt, SettingFinetuneNegativePrompt)
+                new_size = (200, 200)
+                window1['Variant1'].update(data=convert_to_bytes(CacheFilename, resize=new_size))
+                SerialSave(GeneratedImage)
+                window1.refresh()
+                
+                GeneratedImage = Img2Img(SettingCurrentFilename, SettingFinetunePrompt, SettingFinetuneNegativePrompt)
+                new_size = (200, 200)
+                window1['Variant2'].update(data=convert_to_bytes(CacheFilename, resize=new_size))
+                SerialSave(GeneratedImage)
+                window1.refresh()
+                
+                GeneratedImage = Img2Img(SettingCurrentFilename, SettingFinetunePrompt, SettingFinetuneNegativePrompt)
+                new_size = (200, 200)
+                window1['Variant3'].update(data=convert_to_bytes(CacheFilename, resize=new_size))            
+                SerialSave(GeneratedImage)
 
     window.close()
 
